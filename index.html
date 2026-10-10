@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Answer-key review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&family=Zilla+Slab:wght@700&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  The team's page for checking the benchmark's answer keys. Code only: no SOP, page image or answer is in this file.
+  The data lives in a private repository (CFG below, built by eval/review_build.py in FYP_Codes). On GitHub Pages the
+  page reads it with the reviewer's own GitHub token and commits their decisions to
+  review/reviews/<set>/<login>-<date>.jsonl as them. Served by eval/review_serve.py on one PC, it reads and writes
+  the same files directly, with no token.
+-->
+<style>
+/* tokens from the SOP PoC design system (FYP_Codes/app/web/rujuk.css, v4) */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --side:#F6F7F4; --surface:#FFFFFF; --soft:#F3F4F1; --soft-2:#EAECE6;
+  --line:#E3E6E0; --line-2:#CDD2CA;
+  --ink:#1A1F1C; --ink-2:#4F5752; --ink-3:#687069;
+  --primary:#1A1F1C; --primary-hover:#343B36; --on-primary:#FFFFFF;
+  --warn:#8A5A00; --warn-bg:#FFF1D1; --bad:#B42318; --bad-bg:#FDECEA; --ok:#2D5A3D; --ok-bg:#E5EFE7;
+  --ease:cubic-bezier(.23,1,.32,1);
+  --r-chip:4px; --r-ctl:6px; --r-box:8px;
+  --f:"Fira Sans","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-slab:"Zilla Slab",Rockwell,Georgia,serif;
+  --f-zh:"Noto Sans SC","Fira Sans","Microsoft YaHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --bg:#121513; --side:#0E100F; --surface:#171A18; --soft:#1B1F1C; --soft-2:#252A27;
+  --line:#2A2F2C; --line-2:#3A413C;
+  --ink:#ECEFEA; --ink-2:#B9C0B9; --ink-3:#98A098;
+  --primary:#ECEFEA; --primary-hover:#FFFFFF; --on-primary:#121513;
+  --warn:#F0C36B; --warn-bg:#3A2E12; --bad:#FF9B8F; --bad-bg:#3A1A17; --ok:#8FCBA0; --ok-bg:#1B2E21;
+}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:14px/1.5 var(--f);color:var(--ink);background:var(--bg)}
+:lang(zh-Hans){font-family:var(--f-zh)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+[hidden]{display:none!important}
+.app{display:grid;grid-template-columns:284px minmax(0,1.1fr) minmax(400px,1fr);height:100vh}
+/* queue */
+.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side-h{padding:16px 16px 10px;display:grid;gap:10px}
+h1{font:700 19px/1.2 var(--f-slab);margin:0}
+.sum{margin:0;color:var(--ink-2);font-size:13px}
+.bar{height:4px;border-radius:2px;background:var(--soft-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width 280ms var(--ease)}
+select,.in{height:32px;border:1px solid var(--line-2);border-radius:var(--r-ctl);background:var(--surface);padding:0 8px;min-width:0}
+.set{width:100%;font-weight:500}
+.filters{display:flex;gap:6px}
+.filters select{flex:1;font-size:12.5px;height:30px}
+.queue{list-style:none;margin:0;padding:0 8px 8px;overflow-y:auto;flex:1}
+.queue button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;border:0;background:none;border-radius:var(--r-ctl);padding:7px 8px;text-align:left;cursor:pointer;transition:background-color 120ms var(--ease)}
+.queue button:hover{background:var(--soft)}
+.queue button[aria-current="true"]{background:var(--soft-2)}
+.queue .more{padding:8px;font-size:12.5px;color:var(--ink-3)}
+.dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.dot.done{background:var(--ok);border-color:var(--ok)}
+.q-id{font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-meta{display:block;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-n{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.q-n.warn{color:var(--warn);font-weight:600}
+.side-f{border-top:1px solid var(--line);padding:10px 16px;display:grid;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.side-f .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.link{border:0;background:none;padding:0;color:var(--ink-2);text-decoration:underline;cursor:pointer;font-size:12.5px}
+.link:hover{color:var(--ink)}
+.unsaved{color:var(--warn);font-weight:600}
+/* document */
+.doc{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--soft)}
+.doc-tabs{display:flex;gap:16px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.doc-tabs button{border:0;background:none;padding:9px 0;font-weight:500;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.doc-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.page{overflow:auto;padding:16px;flex:1;min-height:0}
+.page.pdf{padding:0;overflow:hidden}
+.page iframe{width:100%;height:100%;border:0;background:#fff}
+.shot{position:relative;width:100%;cursor:zoom-in}
+.page.zoom .shot{width:190%;cursor:zoom-out}
+.page img{display:block;width:100%;height:auto;background:#fff;border-radius:var(--r-chip);box-shadow:0 0 0 1px var(--line)}
+.page .none{color:var(--ink-2);padding:40px 8px;max-width:520px}
+.spot{position:absolute;border:2px solid #D97706;background:rgba(245,158,11,.16);border-radius:3px;pointer-events:none;transition:background-color 120ms var(--ease),box-shadow 120ms var(--ease)}
+.spot b{position:absolute;left:-2px;bottom:100%;background:#D97706;color:#fff;font:600 11.5px/1.5 var(--f);padding:0 5px;border-radius:3px 3px 0 0;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.spot.on{background:rgba(245,158,11,.38);box-shadow:0 0 0 4px rgba(217,119,6,.35)}
+/* answer */
+.work{display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid var(--line)}
+.work-h{padding:14px 18px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+h2{font:700 17px/1.25 var(--f-slab);margin:0;overflow-wrap:anywhere}
+.w-meta{font-size:12.5px;color:var(--ink-3);margin:0}
+.verdict{margin:0;font-size:13.5px;color:var(--ink-2)}
+.verdict b{color:var(--ink);font-weight:600}
+.verdict.warn b{color:var(--warn)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{height:34px;padding:0 13px;border-radius:var(--r-ctl);border:1px solid var(--line-2);background:var(--surface);font-weight:500;cursor:pointer;transition:background-color 120ms var(--ease),transform 160ms var(--ease)}
+.btn:hover:not(:disabled){background:var(--soft)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.primary:hover:not(:disabled){background:var(--primary-hover)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn kbd{font:500 11px/1 var(--f);opacity:.7;margin-left:6px}
+.state{font-size:13px;color:var(--ok);font-weight:600}
+.err{margin:0;color:var(--bad);font-size:13px}
+.work-b{padding:14px 18px 24px;overflow-y:auto;display:grid;gap:14px;align-content:start}
+.lbl{font-size:12.5px;font-weight:600;color:var(--ink-3);margin:0 0 4px;display:block}
+.answer{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65}
+.answer:lang(zh-Hans){line-height:1.85}
+mark{background:var(--warn-bg);color:inherit;border-radius:2px;box-shadow:0 1px 0 var(--warn);padding:0 1px}
+textarea{width:100%;border:1px solid var(--line-2);border-radius:var(--r-ctl);background:var(--surface);padding:8px 10px;font-size:14px;line-height:1.6;resize:vertical}
+textarea.big{min-height:52vh}
+.f input[type=text],.f input[type=number],.f select{width:100%}
+.f.changed .lbl{color:var(--warn)}
+.f.changed input,.f.changed textarea,.f.changed select{border-color:var(--warn)}
+.was{font-size:12px;color:var(--ink-3);margin:3px 0 0;overflow-wrap:anywhere}
+.check{display:flex;gap:8px;align-items:center}
+.check input{width:16px;height:16px;accent-color:var(--ink)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px 14px}
+textarea:focus,input:focus,select:focus,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.chips li{font-size:12.5px;background:var(--soft-2);border-radius:var(--r-chip);padding:2px 7px;color:var(--ink-2)}
+.chips li[data-spot]{cursor:pointer}
+.chips li[data-spot]:hover,.chips li.on{background:var(--warn-bg);color:var(--warn)}
+.hint{margin:0;font-size:12.5px;color:var(--ink-3)}
+.facts{margin:0;padding:0 0 0 18px;color:var(--ink-2);font-size:13.5px}
+details.guide{border:1px solid var(--line);border-radius:var(--r-box)}
+details.guide summary{padding:7px 12px;cursor:pointer;font-weight:600;font-size:13px}
+details.guide ul{margin:0;padding:0 14px 10px 30px;color:var(--ink-2);font-size:13px;display:grid;gap:4px}
+/* sign in */
+.gate{max-width:560px;margin:8vh auto;padding:0 20px;display:grid;gap:14px}
+.gate h1{font-size:24px}
+.gate ol{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--ink-2)}
+.gate code{background:var(--soft-2);border-radius:3px;padding:1px 5px;font-size:13px}
+.gate .in{width:100%;height:38px}
+@media (max-width:1100px){.app{grid-template-columns:230px minmax(0,1fr);grid-template-rows:56vh auto;height:auto}.side{grid-row:1 / span 2;height:100vh;position:sticky;top:0}.work{border-left:0;border-top:1px solid var(--line)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="gate" class="gate" hidden></div>
+<div class="app" id="app" hidden>
+  <aside class="side">
+    <div class="side-h">
+      <h1>Answer-key review</h1>
+      <select class="set" id="set" aria-label="What to review"></select>
+      <p class="sum" id="sum">Loading…</p>
+      <div class="bar" aria-hidden="true"><i id="bar" style="width:0"></i></div>
+      <div class="filters">
+        <select id="f-state" aria-label="Show"><option value="todo">Still to do</option><option value="all">All</option><option value="done">Done</option><option value="mine">Done by me</option></select>
+        <select id="f-lang" aria-label="Language"><option value="">Any language</option><option value="en">English</option><option value="ms">Malay</option><option value="zh">Chinese</option></select>
+      </div>
+    </div>
+    <ol class="queue" id="queue"></ol>
+    <div class="side-f">
+      <div class="row"><span id="save-state">Everything is saved.</span><button class="link" id="save-now" hidden>Save now</button></div>
+      <div class="row"><span id="who"></span><button class="link" id="signout" hidden>Sign out</button></div>
+    </div>
+  </aside>
+  <main class="doc"><div class="doc-tabs" id="doc-tabs" role="tablist" hidden></div><div class="page" id="page"></div></main>
+  <section class="work" id="work" aria-live="polite"></section>
+</div>
+<script>
+/* ---------- where the data is: change these three if the private repository moves ---------- */
+const CFG = { owner: 'MiyukiVigil', repo: 'FYP_PrivateSuckySucky', branch: 'main' };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const LANG = { en: 'English', ms: 'Malay', zh: 'Chinese' };
+const HAN = /[㐀-鿿]/;
+const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname) && !new URLSearchParams(location.search).has('github');
+const MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
+const FLUSH_AFTER = 8, FLUSH_IDLE = 20000;   // commit after this many decisions, or this long after the last one
+
+let me = '', token = localStorage.getItem('akr-token') || '';
+let SETS = [], SET = null, REV = new Map(), cur = null, tab = 0, editing = false, error = '';
+let pending = JSON.parse(localStorage.getItem('akr-pending') || '[]');   // decisions not yet committed
+let draft = {}, timer = null, saving = false;
+const blobs = new Map();
+
+/* ---------- storage: GitHub with the reviewer's token, or the local server ---------- */
+const api = (path, opt = {}) => fetch(`https://api.github.com${path}`, { ...opt,
+  headers: { Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28', Accept: 'application/vnd.github+json', ...(opt.headers || {}) } });
+const repoPath = p => `/repos/${CFG.owner}/${CFG.repo}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
+class Gone extends Error {}
+async function raw(path) {
+  if (LOCAL) { const r = await fetch(`/repo/${path.split('/').map(encodeURIComponent).join('/')}`); if (!r.ok) throw new Gone(path); return r; }
+  const r = await api(`${repoPath(path)}?ref=${CFG.branch}`, { headers: { Accept: 'application/vnd.github.raw+json' } });
+  if (r.status === 401) { signOut('That token was refused. Paste a new one.'); throw new Error('token'); }
+  if (!r.ok) throw new Gone(path);
+  return r;
+}
+const getJSON = async path => (await raw(path)).json();
+async function blobURL(path) {
+  if (!blobs.has(path)) {
+    const b = await (await raw(path)).blob();
+    blobs.set(path, URL.createObjectURL(new Blob([b], { type: MIME[path.split('.').pop().toLowerCase()] || b.type })));
+    if (blobs.size > 40) { const k = blobs.keys().next().value; URL.revokeObjectURL(blobs.get(k)); blobs.delete(k); }
+  }
+  return blobs.get(path);
+}
+const lines = t => t.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+async function loadReviews(set) {
+  if (LOCAL) return (await fetch(`/reviews/${set}`)).json();
+  const r = await api(`${repoPath(`review/reviews/${set}`)}?ref=${CFG.branch}`);
+  if (!r.ok) return [];
+  const files = (await r.json()).filter(f => f.name.endsWith('.jsonl'));
+  const all = await Promise.all(files.map(async f => lines(await (await raw(f.path)).text())));
+  return all.flat();
+}
+function toBase64(s) { const bytes = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192)); return btoa(bin); }
+async function append(set, records) {
+  const body = records.map(r => JSON.stringify(r)).join('\n') + '\n';
+  if (LOCAL) {
+    const r = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ set, by: me, text: body }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'The review file could not be written.');
+    return;
+  }
+  // one file per reviewer per day, so files stay small and two reviewers never write the same one
+  const path = `review/reviews/${set}/${me}-${new Date().toISOString().slice(0, 10)}.jsonl`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const got = await api(`${repoPath(path)}?ref=${CFG.branch}`);
+    let sha, old = '';
+    if (got.ok) { const j = await got.json(); sha = j.sha; old = j.content ? new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\n/g, '')), c => c.charCodeAt(0))) : await (await raw(path)).text(); }
+    const put = await api(repoPath(path), { method: 'PUT', body: JSON.stringify({
+      message: `Review ${set}: ${records.length} item${records.length === 1 ? '' : 's'} by ${me}`, content: toBase64(old + body), branch: CFG.branch, ...(sha ? { sha } : {}) }) });
+    if (put.ok) return;
+    if (put.status === 403 || put.status === 404) throw new Error('GitHub refused the save. Your token needs write access to the repository (see Sign out to paste another).');
+    if (put.status !== 409 && put.status !== 422) throw new Error(`GitHub answered ${put.status}. Your decisions are kept in this browser; try Save now again.`);
+  }
+  throw new Error('GitHub kept refusing the save. Your decisions are kept in this browser; try Save now again.');
+}
+
+/* ---------- sign in ---------- */
+function gate(message) {
+  $('#app').hidden = true; $('#gate').hidden = false;
+  $('#gate').innerHTML = `<h1>Answer-key review</h1>
+    <p>This page shows files from the team's private repository <b>${esc(CFG.owner)}/${esc(CFG.repo)}</b> and saves your checks there under your name. It needs a GitHub token of yours, once.</p>
+    ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
+    <ol>
+      <li>Ask Ivan to add you to the repository if he hasn't (you get an email from GitHub; accept it).</li>
+      <li>Open <a href="https://github.com/settings/tokens/new?scopes=repo&description=Answer-key%20review" target="_blank" rel="noopener">GitHub › Settings › Developer settings › Tokens (classic) › Generate new token</a>.</li>
+      <li>Give it the <code>repo</code> scope and an expiry of 30 days, then generate it.</li>
+      <li>Paste it below. It is kept only in this browser, and sent only to github.com.</li>
+    </ol>
+    <label><span class="lbl">Your GitHub token</span><input class="in" id="tok" type="password" autocomplete="off" placeholder="ghp_…"></label>
+    <div><button class="btn primary" id="tok-go">Open the review</button></div>
+    <p class="hint">The repository owner can use a fine-grained token limited to that one repository (Contents: read and write) instead.</p>`;
+  $('#tok-go').onclick = () => { token = $('#tok').value.trim(); if (token) { localStorage.setItem('akr-token', token); start(); } };
+  $('#tok').onkeydown = e => { if (e.key === 'Enter') $('#tok-go').click(); };
+}
+function signOut(message) { token = ''; localStorage.removeItem('akr-token'); gate(message); }
+
+/* ---------- reviews ---------- */
+const stamp = () => new Date().toISOString();
+function indexReviews(records) {
+  REV = new Map();
+  for (const r of [...records, ...pending.filter(p => p.set === SET.id).map(p => p.rec)])
+    if (r && r.id && (!REV.has(r.id) || (r.at || '') >= (REV.get(r.id).at || ''))) REV.set(r.id, r);
+}
+const review = it => { const r = REV.get(it.id); return r && r.status !== 'reopen' ? r : null; };
+function decide(status, values) {
+  const rec = { id: cur.id, status, by: me, at: stamp(), notes: ($('#notes')?.value || '').trim(), values: values || {} };
+  REV.set(cur.id, rec);
+  pending.push({ set: SET.id, rec });
+  localStorage.setItem('akr-pending', JSON.stringify(pending));
+  drawSave();
+  clearTimeout(timer);
+  if (pending.length >= FLUSH_AFTER) flush(); else timer = setTimeout(flush, FLUSH_IDLE);
+}
+async function flush() {
+  if (saving || !pending.length) return;
+  saving = true; clearTimeout(timer); drawSave();
+  const batch = pending.slice();
+  try {
+    for (const set of [...new Set(batch.map(p => p.set))]) await append(set, batch.filter(p => p.set === set).map(p => p.rec));
+    pending = pending.slice(batch.length);
+    localStorage.setItem('akr-pending', JSON.stringify(pending));
+    saveError = '';
+  } catch (e) { saveError = e.message; }
+  saving = false; drawSave();
+  if (pending.length && !saveError) timer = setTimeout(flush, 2000);
+}
+let saveError = '';
+function drawSave() {
+  const n = pending.length;
+  $('#save-state').innerHTML = saving ? 'Saving…' : saveError ? `<span class="unsaved">${esc(saveError)}</span>`
+    : n ? `<span class="unsaved">${n} decision${n === 1 ? '' : 's'} not saved yet</span>` : 'Everything is saved.';
+  $('#save-now').hidden = !n || saving;
+}
+window.addEventListener('beforeunload', e => { if (pending.length) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- the queue ---------- */
+const count = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
+const doubts = it => count(it.marks) + count(it.missing);
+function visible() {
+  const st = $('#f-state').value, lg = $('#f-lang').value;
+  return SET.items.filter(it => {
+    const r = review(it);
+    return (st === 'all' || (st === 'todo' && !r) || (st === 'done' && r) || (st === 'mine' && r && r.by === me)) && (!lg || it.lang === lg);
+  });
+}
+function drawQueue() {
+  const done = SET.items.filter(review).length, n = SET.items.length;
+  $('#sum').textContent = done === n ? `All ${n} are checked.` : `${(n - done).toLocaleString()} of ${n.toLocaleString()} still to check.`;
+  $('#bar').style.width = `${n ? 100 * done / n : 0}%`;
+  const rows = visible(), at = Math.max(0, rows.findIndex(r => cur && r.id === cur.id));
+  const from = Math.max(0, at - 40), shown = rows.slice(from, from + 160);
+  $('#queue').innerHTML = (from ? `<li class="more">${from.toLocaleString()} earlier</li>` : '') + shown.map(it => {
+    const r = review(it), d = SET.id === 'ocr' ? doubts(it) : 0;
+    const what = r ? (r.status === 'ok' ? 'Right' : 'Fixed') : SET.id !== 'ocr' ? '' : it.mode === 'transcribe' ? 'Type up' : d ? `${d} to check` : 'Engines agree';
+    return `<li><button type="button" data-id="${esc(it.id)}" aria-current="${!!cur && cur.id === it.id}">
+      <span class="dot${r ? ' done' : ''}" aria-hidden="true"></span>
+      <span><span class="q-id"${it.lang === 'zh' ? ' lang="zh-Hans"' : ''}>${esc(SET.id === 'qa' || SET.id === 'extract' ? it.title : it.id)}</span><span class="q-meta">${esc(SET.id === 'qa' || SET.id === 'extract' ? it.sub : (LANG[it.lang] || '') + ', ' + it.title)}</span></span>
+      <span class="q-n${d && !r && it.mode !== 'transcribe' ? ' warn' : ''}">${esc(what)}</span></button></li>`;
+  }).join('') + (rows.length > from + shown.length ? `<li class="more">${(rows.length - from - shown.length).toLocaleString()} more below; they appear as you go.</li>` : '')
+    || '<li class="more">Nothing here. Change the filter above.</li>';
+  $('#queue').querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---------- one item ---------- */
+function marked(text, flagged) {
+  const hit = w => flagged[w] > 0;
+  return text.replace(/[\p{L}\p{N}]+|[^\p{L}\p{N}]+/gu, tok => {
+    if (!/[\p{L}\p{N}]/u.test(tok)) return esc(tok);
+    const w = tok.normalize('NFKC').toLowerCase();
+    if (HAN.test(w)) return [...tok].map(c => hit(c.normalize('NFKC')) ? `<mark>${esc(c)}</mark>` : esc(c)).join('');
+    return hit(w) ? `<mark>${esc(tok)}</mark>` : esc(tok);
+  });
+}
+function verdict(it) {
+  if (SET.id !== 'ocr') return ['', ''];
+  const a = count(it.marks), b = count(it.missing), r = it.readings.join(', ');
+  if (it.mode === 'transcribe')
+    return [a + b ? 'warn' : '', `<b>Draft from PaddleOCR-VL.</b> Correct it against the page, then save. ${a + b ? `${a + b} word${a + b === 1 ? '' : 's'} PP-OCRv5 read differently are marked or boxed.` : 'PP-OCRv5 read the same words.'}`];
+  if (!it.readings.length) return ['warn', '<b>No engine reading saved for this page.</b> Check the whole answer against the page.'];
+  const src = it.digital ? ` (a digital page: ${esc(r)})` : ` (${esc(r)})`;
+  if (!a && !b) return ['', `<b>The readings agree with the answer</b>${src}. A quick look at the page is enough.`];
+  const parts = [a ? `${a} word${a === 1 ? '' : 's'} in the answer no reading has (marked in the text)` : '', b ? `${b} word${b === 1 ? '' : 's'} the readings have that the answer lacks (boxed on the page)` : ''].filter(Boolean);
+  return ['warn', `<b>Check ${parts.join(', and ')}</b>${src}.`];
+}
+const single = it => it.fields.length === 1 && it.fields[0].kind === 'long';   // one long text: OCR answers, flowcharts
+const same = (a, b) => String(a ?? '').replace(/\r\n/g, '\n').trim() === String(b ?? '').replace(/\r\n/g, '\n').trim();
+const valueOf = (it, f) => f.key in draft ? draft[f.key] : (review(it)?.values || {})[f.key] ?? f.value;
+const changed = it => it.fields.filter(f => f.key in draft && !same(draft[f.key], f.value));
+
+function fieldHTML(it, f, done, la) {
+  const v = valueOf(it, f), ch = !same(v, f.value), id = `f-${f.key.replace(/\W/g, '_')}`, dis = done ? ' disabled' : '';
+  const was = ch ? `<p class="was">The answer file says: ${esc(f.kind === 'bool' ? (f.value ? 'yes' : 'no') : String(f.value) || '(empty)')}</p>` : '';
+  if (f.kind === 'bool') return `<div class="f${ch ? ' changed' : ''}"><label class="check"><input type="checkbox" id="${id}" data-key="${esc(f.key)}"${v === true || v === 'true' ? ' checked' : ''}${dis}> <span>${esc(f.label)}</span></label>${was}</div>`;
+  const ctl = f.kind === 'select' ? `<select id="${id}" data-key="${esc(f.key)}"${dis}>${[...new Set([...(f.options || []), String(v)])].map(o => `<option${o === String(v) ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+    : f.kind === 'long' ? `<textarea id="${id}" data-key="${esc(f.key)}" rows="${Math.min(12, Math.max(2, String(v).split('\n').length + Math.floor(String(v).length / 70)))}" lang="${la}" spellcheck="false"${dis}>${esc(v)}</textarea>`
+    : `<input class="in" id="${id}" data-key="${esc(f.key)}" type="${f.kind === 'number' ? 'number' : 'text'}" value="${esc(v)}" lang="${la}"${dis}>`;
+  return `<div class="f${ch ? ' changed' : ''}${f.kind === 'long' ? ' wide' : ''}"><label class="lbl" for="${id}">${esc(f.label)}</label>${ctl}${was}</div>`;
+}
+function drawWork() {
+  const it = cur;
+  if (!it) { $('#work').innerHTML = '<div class="work-b"><p class="hint">Pick an item on the left.</p></div>'; $('#page').innerHTML = ''; $('#doc-tabs').hidden = true; return; }
+  const la = it.lang === 'zh' ? 'zh-Hans' : it.lang, r = review(it), done = !!r, one = single(it), tr = it.mode === 'transcribe';
+  const [cls, v] = verdict(it), ch = changed(it), f0 = it.fields[0];
+  const missing = Object.entries(it.missing || {}).sort((x, y) => y[1] - x[1]).slice(0, 60);
+  const sug = Object.entries(it.suggest || {});
+  const acts = done
+    ? `<span class="state">${r.status === 'ok' ? 'Checked as right' : 'Fixed'} by ${esc(r.by || 'someone')}</span><button class="btn" data-act="reopen">Reopen</button><button class="btn" data-next>Next<kbd>J</kbd></button>`
+    : tr ? `<button class="btn primary" data-act="fixed">Save transcription</button><button class="btn" data-next>Skip<kbd>J</kbd></button>`
+    : one && editing ? `<button class="btn primary" data-act="fixed">Save my correction</button><button class="btn" data-cancel>Cancel</button>`
+    : one ? `<button class="btn primary" data-act="ok">Right as it is<kbd>V</kbd></button><button class="btn" data-edit>Fix it<kbd>E</kbd></button><button class="btn" data-next>Skip<kbd>J</kbd></button>`
+    : ch.length ? `<button class="btn primary" data-act="fixed">Save ${ch.length} change${ch.length === 1 ? '' : 's'}</button><button class="btn" data-cancel>Undo my changes</button>`
+    : `<button class="btn primary" data-act="ok">All right as it is<kbd>V</kbd></button>${sug.length ? `<button class="btn" data-suggest>Use the parser's count</button>` : ''}<button class="btn" data-next>Skip<kbd>J</kbd></button>`;
+  let body;
+  if (one) {
+    const text = valueOf(it, f0), edit = !done && (editing || tr);
+    body = `${missing.length && !done ? `<div><span class="lbl">${tr ? 'Words PP-OCRv5 read that the draft lacks' : 'Words the readings have that the answer lacks'}</span>
+        <ul class="chips" lang="${la}">${missing.map(([w, n]) => { const k = (it.boxes || []).findIndex(s => s.words.includes(w)); return `<li${k >= 0 ? ` data-spot="${k}"` : ''}>${esc(w)}${n > 1 ? ` ×${n}` : ''}</li>`; }).join('')}</ul>
+        <p class="hint" style="margin-top:6px">${(it.boxes || []).length ? 'Orange boxes on the page show where. Click a word to jump to it.' : 'Their place on the page isn\'t known; look over the page.'}</p></div>` : ''}
+      <div><span class="lbl">${esc(edit && !tr ? 'Your corrected version' : f0.label)}</span>
+      ${edit ? `<textarea class="big" id="text" data-key="${esc(f0.key)}" lang="${la}" spellcheck="false">${esc(text)}</textarea>`
+        : `<p class="answer" lang="${la}">${marked(String(text), done ? {} : it.marks || {})}</p>`}</div>`;
+  } else {
+    const short = it.fields.filter(f => f.kind !== 'long'), long = it.fields.filter(f => f.kind === 'long');
+    body = `${(it.facts || []).length ? `<ul class="facts">${it.facts.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      ${long.filter(f => f.key === 'question').map(f => fieldHTML(it, f, done, la)).join('')}
+      <div class="grid2">${short.map(f => fieldHTML(it, f, done, la)).join('')}</div>
+      ${long.filter(f => f.key !== 'question').map(f => fieldHTML(it, f, done, la)).join('')}`;
+  }
+  $('#work').innerHTML = `<div class="work-h">
+      <h2${la === 'zh-Hans' ? ' lang="zh-Hans"' : ''}>${esc(SET.id === 'qa' ? it.id : it.title)}</h2><p class="w-meta">${esc(SET.id === 'qa' ? it.sub : `${it.id}, ${it.sub}`)}</p>
+      ${v ? `<p class="verdict ${cls}">${v}</p>` : ''}
+      <div class="acts">${acts}</div>
+      ${error ? `<p class="err" role="alert">${esc(error)}</p>` : ''}
+    </div>
+    <div class="work-b">
+      ${it.note ? `<p class="hint">${esc(it.note)}</p>` : ''}
+      ${body}
+      <label><span class="lbl">Notes (optional)</span><input class="in" id="notes" style="width:100%" value="${esc(r ? r.notes : '')}"${done ? ' disabled' : ''}></label>
+      <details class="guide"><summary>How to check these</summary><ul>${(SET.guide || []).map(g => `<li>${esc(g)}</li>`).join('')}</ul></details>
+    </div>`;
+}
+async function drawDoc() {
+  const it = cur, docs = it ? it.docs || [] : [];
+  $('#doc-tabs').hidden = docs.length < 2;
+  $('#doc-tabs').innerHTML = docs.map((d, i) => `<button type="button" role="tab" aria-selected="${i === tab}" data-tab="${i}">${esc(d.label)}</button>`).join('');
+  const page = $('#page'), d = docs[tab];
+  page.className = 'page';
+  if (!d) { page.innerHTML = `<p class="none">${it ? 'There is no file to show for this item.' : ''}</p>`; return; }
+  page.innerHTML = '<p class="none">Loading the file…</p>';
+  const id = it.id, t = tab;
+  let url;
+  try { url = await blobURL(d.path); } catch { if (cur && cur.id === id && tab === t) page.innerHTML = `<p class="none">This file isn't in the repository yet: <b>${esc(d.path)}</b>.</p>`; return; }
+  if (!cur || cur.id !== id || tab !== t) return;   // the reviewer moved on while it loaded
+  if (d.path.toLowerCase().endsWith('.pdf')) {
+    page.classList.add('pdf');
+    page.innerHTML = `<iframe title="${esc(d.label)}" src="${url}#page=${d.page || 1}&zoom=page-width"></iframe>`;
+  } else {
+    const spots = review(it) ? [] : (it.boxes || []), la = it.lang === 'zh' ? 'zh-Hans' : it.lang;
+    page.innerHTML = `<div class="shot"><img src="${url}" alt="${esc(d.label)} of ${esc(it.title)}">${
+      spots.map((s, i) => `<i class="spot" data-spot="${i}" style="left:${s.box[0] * 100}%;top:${s.box[1] * 100}%;width:${(s.box[2] - s.box[0]) * 100}%;height:${(s.box[3] - s.box[1]) * 100}%"><b lang="${la}">${esc(s.words.join(', '))}</b></i>`).join('')}</div>`;
+    page.scrollTop = 0;
+  }
+}
+function pick(id) {
+  cur = SET.items.find(i => i.id === id) || null;
+  tab = 0; editing = false; error = ''; draft = {};
+  drawQueue(); drawWork(); drawDoc();
+}
+function next() {
+  const rows = visible(), i = rows.findIndex(r => cur && r.id === cur.id);
+  const all = SET.items, at = cur ? all.indexOf(cur) : -1, lg = $('#f-lang').value;
+  const n = rows[i + 1] || all.slice(at + 1).find(r => !review(r) && (!lg || r.lang === lg)) || rows.find(r => !review(r));
+  if (n) pick(n.id); else { drawQueue(); drawWork(); }
+}
+function showSpot(k, scroll) {
+  document.querySelectorAll('.spot.on,.chips li.on').forEach(x => x.classList.remove('on'));
+  const s = document.querySelector(`.spot[data-spot="${k}"]`);
+  if (!s) return;
+  s.classList.add('on');
+  document.querySelectorAll(`.chips li[data-spot="${k}"]`).forEach(x => x.classList.add('on'));
+  if (scroll) s.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+}
+function act(kind) {
+  if (kind === 'reopen') { decide('reopen'); return pick(cur.id); }
+  if (kind === 'ok') { decide('ok'); return next(); }
+  const values = {};
+  if (single(cur)) {
+    const t = ($('#text')?.value ?? '').replace(/\r\n/g, '\n').trim();
+    if (!t) { error = 'There is no text to save.'; return drawWork(); }
+    values[cur.fields[0].key] = t + '\n';
+  } else for (const f of changed(cur)) values[f.key] = draft[f.key];
+  decide('fixed', values);
+  next();
+}
+
+/* ---------- wiring ---------- */
+$('#queue').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) pick(b.dataset.id); });
+$('#f-state').addEventListener('change', () => { const r = visible(); pick((r.includes(cur) ? cur : r[0] || {}).id); });
+$('#f-lang').addEventListener('change', () => { const r = visible(); pick((r.includes(cur) ? cur : r[0] || {}).id); });
+$('#set').addEventListener('change', e => openSet(e.target.value));
+$('#save-now').addEventListener('click', flush);
+$('#signout').addEventListener('click', () => { if (!pending.length || confirm('Some decisions are not saved yet and stay in this browser. Sign out anyway?')) signOut(); });
+$('#doc-tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = Number(b.dataset.tab); drawDoc(); } });
+$('#page').addEventListener('click', e => { if (e.target.closest('.shot')) $('#page').classList.toggle('zoom'); });
+$('#work').addEventListener('mouseover', e => { const c = e.target.closest('li[data-spot]'); if (c) showSpot(c.dataset.spot, false); });
+$('#work').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]');
+  if (a) return act(a.dataset.act);
+  const chip = e.target.closest('li[data-spot]');
+  if (chip) return showSpot(chip.dataset.spot, true);
+  if (e.target.closest('[data-edit]')) { editing = true; drawWork(); $('#text')?.focus(); }
+  if (e.target.closest('[data-cancel]')) { editing = false; draft = {}; error = ''; drawWork(); }
+  if (e.target.closest('[data-suggest]')) { Object.assign(draft, cur.suggest); drawWork(); }
+  if (e.target.closest('[data-next]')) next();
+});
+$('#work').addEventListener('input', e => {
+  const k = e.target.dataset.key;
+  if (!k || single(cur)) return;
+  const was = changed(cur).length;
+  draft[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value;
+  const f = cur.fields.find(x => x.key === k), box = e.target.closest('.f');
+  box.classList.toggle('changed', !same(draft[k], f.value));
+  if (changed(cur).length !== was || !was) {   // the buttons change between "all right" and "save N changes"
+    const notes = $('#notes')?.value, pos = e.target.selectionStart, id = e.target.id;
+    drawWork();
+    if ($('#notes')) $('#notes').value = notes || '';
+    const el = document.getElementById(id);
+    if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch {} }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || !cur || $('#app').hidden) return;
+  const k = e.key.toLowerCase(), r = review(cur);
+  if (k === 'j') next();
+  else if (k === 'k') { const rows = visible(), i = rows.findIndex(x => x.id === cur.id); if (i > 0) pick(rows[i - 1].id); }
+  else if (k === 'v' && !r && cur.mode !== 'transcribe' && !editing && !changed(cur).length) act('ok');
+  else if (k === 'e' && !r && single(cur) && cur.mode !== 'transcribe') { editing = true; drawWork(); $('#text')?.focus(); e.preventDefault(); }
+});
+
+async function openSet(id) {
+  localStorage.setItem('akr-set', id);
+  $('#sum').textContent = 'Loading…'; $('#queue').innerHTML = '';
+  SET = await getJSON(`review/sets/${id}.json`);
+  indexReviews(await loadReviews(id));
+  const r = visible();
+  pick((r[0] || SET.items[0] || {}).id);
+}
+async function start() {
+  if (!LOCAL) {
+    if (!token) return gate();
+    const u = await api('/user');
+    if (!u.ok) return signOut('GitHub refused that token. Check it was copied whole and has not expired.');
+    me = (await u.json()).login;
+    const can = await api(`/repos/${CFG.owner}/${CFG.repo}`);
+    if (!can.ok) return gate(`Signed in as ${me}, but that account can't open ${CFG.owner}/${CFG.repo}. Ask Ivan to add you, accept the invitation, and make sure the token has the repo scope.`);
+  } else {
+    me = localStorage.getItem('akr-name') || '';
+    while (!me) me = (prompt('Your name, recorded on each item you check:') || '').trim().replace(/[^\w.-]+/g, '_');
+    localStorage.setItem('akr-name', me);
+  }
+  $('#gate').hidden = true; $('#app').hidden = false;
+  $('#who').textContent = LOCAL ? `Checking as ${me} (this PC)` : `Signed in as ${me}`;
+  $('#signout').hidden = LOCAL;
+  try { SETS = await getJSON('review/sets/index.json'); }
+  catch { $('#sum').textContent = 'The review data is not in the repository yet (review/sets/index.json).'; return; }
+  $('#set').innerHTML = SETS.map(s => `<option value="${s.id}">${esc(s.title)} (${s.count.toLocaleString()}), ${esc(s.area)}</option>`).join('');
+  const want = localStorage.getItem('akr-set');
+  $('#set').value = SETS.some(s => s.id === want) ? want : SETS[0].id;
+  drawSave();
+  await openSet($('#set').value);
+  if (pending.length) flush();
+}
+start();
+</script>
+</body>
+</html>
