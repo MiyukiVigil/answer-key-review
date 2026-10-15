@@ -221,7 +221,8 @@ async function append(set, records) {
   // one file per reviewer per day, so files stay small and two reviewers never write the same one
   const path = `review/reviews/${set}/${me}-${new Date().toISOString().slice(0, 10)}.jsonl`;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const got = await api(`${repoPath(path)}?ref=${CFG.branch}`);
+    // no-store: GitHub gives the raw and JSON forms the same ETag, so a cached raw read (loadReviews) comes back here as 304
+    const got = await api(`${repoPath(path)}?ref=${CFG.branch}`, { cache: 'no-store' });
     let sha, old = '';
     if (got.ok) { const j = await got.json(); sha = j.sha; old = j.content ? new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\n/g, '')), c => c.charCodeAt(0))) : await (await raw(path)).text(); }
     const put = await api(repoPath(path), { method: 'PUT', body: JSON.stringify({
