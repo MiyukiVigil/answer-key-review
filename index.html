@@ -512,7 +512,16 @@ async function start() {
     if (!u.ok) return signOut('GitHub refused that token. Check it was copied whole and has not expired.');
     me = (await u.json()).login;
     const can = await api(`/repos/${CFG.owner}/${CFG.repo}`);
-    if (!can.ok) return gate(`Signed in as ${me}, but that account can't open ${CFG.owner}/${CFG.repo}. Ask Ivan to add you, accept the invitation, and make sure the token has the repo scope.`);
+    if (!can.ok) {
+      // GitHub answers 404 both for "not a collaborator" and for "token can't see private repos", so say which it looks like
+      const scopes = u.headers.get('x-oauth-scopes');
+      const why = token.startsWith('github_pat_')
+        ? `This is a fine-grained token. Make a new one with Resource owner set to ${CFG.owner} (not your own account), choose this repository, and give it Contents: read and write. If GitHub says it needs approval, ask Ivan to approve it under the organisation's Settings › Personal access tokens. A classic token with the repo scope is simpler.`
+        : scopes !== null && !scopes.split(',').map(s => s.trim()).includes('repo')
+          ? `This token's scopes are "${scopes || 'none'}". It needs the full repo scope (the top box, not just public_repo). Make a new classic token with repo ticked.`
+          : `If you were only just added, accept the invitation from GitHub's email or github.com/${CFG.owner}, then try again.`;
+      return gate(`Signed in as ${me}, but this token can't open ${CFG.owner}/${CFG.repo}. ${why}`);
+    }
   } else {
     me = localStorage.getItem('akr-name') || '';
     while (!me) me = (prompt('Your name, recorded on each item you check:') || '').trim().replace(/[^\w.-]+/g, '_');
